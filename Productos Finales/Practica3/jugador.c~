@@ -1,0 +1,187 @@
+/*=== Cabeceras =============================================================*/
+#include "semaforos.h"
+#include "sudoku.h"
+#include"mensajeria.h"
+/*===========================================================================*/
+
+#define NUM_ARG 2
+
+void (*signal (int sig, void (*func)(int))) (int);
+
+int semid;
+Sudoku *dirSudoku=NULL;
+int queue;
+
+/******************************************************************************
+
+Nombre de la función: terminaJugador
+
+Descripción: Captura la señal SIGUSR1
+
+Devuelve: Void
+
+
+******************************************************************************/
+void terminaJugador(int sennal) {
+
+	if(shmdt(dirSudoku)!=-1)
+		printf(">Desvinculado de la Zona Sudoku\n");
+
+	up(semid,SEM_MAX_JUGADORES);
+	exit(0);
+}
+
+/******************************************************************************
+
+Nombre de la función: terminaTurno
+
+Descripción: Captura la señal SIGALARM
+
+Devuelve: Void
+
+
+******************************************************************************/
+void terminaTurno(int sennal) {
+
+	sendFinTurnoJugador(queue);
+
+	exit(0);
+}
+
+/******************************************************************************
+
+Nombre de la función: main
+
+Descripción: 
+
+Devuelve: 0 si todo ha funcionado correctamente
+	  -1 si no
+
+
+******************************************************************************/
+int main(int argc, char *argv[]){
+
+	Jugador jugador;
+	PeticionJugador peticionJugador;
+
+	int error;	
+
+	Sudoku sudoku;
+	Jugada jugada;
+
+	int tablero;
+
+
+	char buffer[MAX_LINE];
+	int cordx,cordy,valor;
+	int longitudPeticionJugador= sizeof(PeticionJugador) - sizeof(peticionJugador.tipo);
+
+	/*Control errores parametros entrada*/
+	if(argc!=NUM_ARG){
+		printf(">Error el numero de parametros debe ser 1\n");
+		exit(-1);
+	}
+
+	signal(SIGUSR1,terminaJugador);
+	
+	/*Introduce los valores de la estructura Jugador*/
+	setNombreJugador(&jugador,argv[1]);
+	setIdJugador(&jugador,getpid());
+
+	/*Intoduce los valores de la peticion de jugador*/
+	setJugadorPeticionJugador(jugador,&peticionJugador);
+
+	/*Se engancha a memoria compartida*/
+	tablero =shmget(CLAVE_SUDOKU,sizeof(Sudoku),SHM_R|SHM_W);
+	if(tablero==-1){
+		printf(">Error al obtener el id de la Zona Sudoku\n");
+		exit(-1);
+	}
+	/*Vincula la memoria compartida Zona Tablero*/
+	dirSudoku = (Sudoku *) shmat (tablero, NULL, 0);
+
+	if(dirSudoku==(Sudoku *)-1){
+		printf(">Error al vincularse a la Zona Sudoku %d \n",tablero);
+		exit(-1);
+	}
+	printf(">Vinculado a la Zona Sudoku\n");
+
+	/*Se engancha a la cola de mensajes*/
+	queue = msgget(CLAVE_MENSAJES,SHM_R|SHM_W);
+	if(queue==-1){
+		perror("msgget:");
+		exit(-1);
+	}
+
+	/*Nuevo jugador añadido al juego, hace down del semaforo*/
+	down(semid,SEM_MAX_JUGADORES);
+	
+
+	
+	/*Manda la peticion a juez, lo guardara en memoria compartida*/
+	if(sendPeticionJugador(queue,&peticionJugador,longitudPeticionJugador)==-1){
+		perror("sendPeticionJugador: ");
+
+	}
+	
+	/*Recibe el turno de jugada*/
+	if(recieveTurnoJugador(queue,jugador)==-1){
+		perror("recieveTurnoJugador: ");
+
+	}
+
+	/*Accede a memoria para obtener la tabla*/
+	down(semid,SEM_SUDOKU_MUTEX);
+	sudoku=*dirSudoku;
+	up(semid,SEM_SUDOKU_MUTEX);
+
+	/*Imprime la tabla*/
+	ImprimeTablero(sudoku);
+
+	signal(SIGALRM,terminaTurno);
+	alarm(TURNO_TIEMPO);
+	/*Obtiene las coordenadas*/
+	do{
+		error=0;
+		printf(">Introduzca las coordendas separadas por comas donde desea introducir el valor\n");
+		fgets(buffer,MAX_LINE,stdin);
+		if(sscanf(buffer,"%d,%d",&cordx,&cordy)!=2){
+			printf(">Error al obtener las coordenadas, Ej: 1,1\n");
+			error=1;
+		}
+	}while(error==1);
+	/*Obtiene el valor*/
+	do{
+		error=0;
+		printf(">Introduzca el valor de esa posicion\n");
+		fgets(buffer,MAX_LINE,stdin);
+		if(sscanf(buffer,"%d",&valor)!=1){
+			printf(">Error al obtener el valor, Ej: 1\n");
+			error=1;
+		}
+		if(valor<0)
+			error=1;
+	}while(error==1);
+	/*Termina el turno*/
+	alarm(0);
+
+	setJugada(&jugada,cordx,cordy,valor);
+	
+	/*Envia los valores*/
+	
+	/*Segun responda juez el jugador seguira en su turno o no*/
+
+
+
+
+	do{
+	}while(1);
+
+
+
+	/*Termina de jugar*/
+	up(semid,SEM_MAX_JUGADORES);
+
+
+return 0;
+}

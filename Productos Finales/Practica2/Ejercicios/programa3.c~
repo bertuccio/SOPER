@@ -1,0 +1,61 @@
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/types.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+#define CLAVE_MEMORIA 1555
+#define MAX_LINE 256
+int main() {
+
+	int shm;
+	int * dir = NULL;
+	int numero = 2;
+	shm = shmget(CLAVE_MEMORIA, sizeof(int), IPC_CREAT|SHM_R|SHM_W | IPC_EXCL);
+
+	if (shm == -1) {
+
+		printf(">El segmento de memoria compartida ya ha sido creado\n");
+		/*Se quita IPC_CREAT si la memoria compartida ya esta creada, devuelve el id de la memoria*/
+		shm =shmget(CLAVE_MEMORIA, sizeof(int),SHM_R|SHM_W);
+
+		if(shm==-1){
+			printf("Error al obtener el id de la memoria compartida\n");
+			exit(-1);
+		}
+	}
+	else
+		printf(">El segmento de memoria compartida ha sido creado\n");
+	
+	system("ipcs -m");
+	/*Vincula la memoria compartida*/
+	dir = (int *) shmat (shm, NULL, 0);
+	if(dir==(int *)-1){
+		printf("Error al obtener la dirección de memoria compartida\n");
+		exit(-1);
+	}
+	printf(">Direccion de memoria compartida obtenida\n");
+
+	(*dir) = numero;
+
+	/*Desvincula la memoria compartida antes de eliminarla*/
+	if(shmdt(dir)==-1){
+		printf("Error al desvincular la memoria compartida\n");
+		exit(-1);
+	}
+	printf(">Proceso desvinculado de la memoria compartida\n");
+
+	/*elimina la memoria compartida (no se elimina hasta que no haya ningún proceso vinculado)*/
+	if(shmctl(shm,IPC_RMID,NULL)==-1){
+		printf("Error al eliminar la memoria compartida\n");
+		exit(-1);
+	}
+	printf(">Memoria compartida borrada\n");
+		
+
+
+exit(0);
+
+}

@@ -1,0 +1,104 @@
+/******************************************************************************
+
+Nombre del módulo: mensajeria.c
+
+Descripción: Este archivo contiene las funciones de mensajeria.h
+
+******************************************************************************/
+
+/*=== Cabeceras =============================================================*/
+#include"mensajeria.h"
+#include"sudoku.h"
+/*=== Funciones==============================================================*/
+
+/******************************************************************************
+
+Nombre de la función: sendPeticionJugador
+
+Descripción: Envia una peticion de jugador
+
+Devuelve: -1 si ha habido algun error
+
+
+******************************************************************************/
+int sendPeticionJugador(int queue, PeticionJugador *peticion, int longitud){
+
+	return msgsnd(queue,peticion,longitud,0);
+}
+/******************************************************************************
+
+Nombre de la función: recievePeticionJugador
+
+Descripción: Recibe una peticion de jugador
+
+Devuelve: -1 si ha habido algun error
+
+
+******************************************************************************/
+int recievePeticionJugador(int queue, PeticionJugador *peticion, int longitud){
+
+	return msgrcv(queue,peticion,longitud,PETICION_JUGADOR,IPC_NOWAIT);
+}
+/******************************************************************************
+
+Nombre de la función: sendTurnoJugador
+
+Descripción: Envia el turno de un jugador
+
+Devuelve: -1 si ha habido algun error
+
+
+******************************************************************************/
+int sendTurnoJugador(int queue, Jugador jugador){
+	long id;
+	id=jugador.id;
+
+	return msgsnd(queue,&id,sizeof(long),0);
+}
+/******************************************************************************
+
+Nombre de la función: recieveTurnoJugador
+
+Descripción: Recibe el turno de un jugador
+
+Devuelve: -1 si ha habido algun error
+
+
+******************************************************************************/
+int recieveTurnoJugador(int queue, Jugador jugador){
+
+	long idRecibida;
+
+	return msgrcv(queue,&idRecibida,sizeof(long),jugador.id,0);
+}
+/******************************************************************************
+
+Nombre de la función: sendFinTurnoJugador
+
+Descripción: envia un mensaje diciendo que ha acabado el turno
+
+Devuelve: -1 si ha habido algun error
+
+
+******************************************************************************/
+int sendFinTurnoJugador(int queue){
+
+	long id=FIN_TURNO;
+
+	return msgsnd(queue,&id,sizeof(long),0);
+}
+/******************************************************************************
+
+Nombre de la función: recieveFinTurnoJugador
+
+Descripción: Recibe el mensaje de turno acabado
+
+Devuelve: -1 si ha habido algun error
+
+
+******************************************************************************/
+int recieveFinTurnoJugador(int queue, PeticionJugador *jugador, int longitud){
+
+	jugador.
+	return msgrcv(queue,jugador,longitud,FIN_TURNO,0);
+}

@@ -1,0 +1,194 @@
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/sem.h>
+#include <sys/types.h>
+#include <errno.h>
+#include <stdlib.h>
+#include<stdio.h>
+
+       #if defined(__GNU_LIBRARY__) && !defined(_SEM_SEMUN_UNDEFINED)
+       /* la union semun se define al incluir <sys/sem.h> */
+       #else
+       /* segÃºn X/OPEN tenemos que definirla nosostros mismos */
+       union semun {
+               int val;                    /* valor para SETVAL */
+               struct semid_ds *buf;       /* buffer para IPC_STAT, IPC_SET */
+               unsigned short int *array;  /* array para GETALL, SETALL */
+               struct seminfo *__buf;      /* buffer para IPC_INFO */
+       };
+#endif
+
+#define CLAVE_SEMAFORO 2000
+#define CLAVE_MEMORIA 1555
+#define NUM_SEMAFOROS 1
+
+	
+
+
+// Completar las definiciones de constantes
+#define SEM_MUTEX 0
+
+
+// Poner aquí el código de la función down desarrollada en el ejercicio 7
+int down(int id, int num_sem){
+
+	int resultado;
+
+	struct sembuf operdown = {0, -1, 0};
+
+	operdown.sem_num=num_sem;
+
+	do{
+		resultado=semop(id, &operdown, 1);
+	}while(errno==EINTR&&resultado==-1);
+	
+	
+
+return resultado;	
+
+}
+// Poner aquí el código de la función up desarrollada en el ejercicio 8
+int up(int id, int num_sem){
+	int resultado;
+
+	struct sembuf operup = {0, 1, 0};
+
+	operup.sem_num=num_sem;
+
+	semop(id, &operup, 1);
+
+}
+
+int main() {
+      int semid, shm;
+      union semun carg;
+      unsigned short int array[NUM_SEMAFOROS];
+      int * dir = NULL;
+
+
+      semid = semget(CLAVE_SEMAFORO, 1, IPC_CREAT|IPC_EXCL|SHM_R|SHM_W);
+      if (semid == -1 && errno == EEXIST){
+          semid = semget(CLAVE_SEMAFORO, 1, SHM_R|SHM_W);
+          printf("\n>El semaforo ya existe\n");
+     	  if (semid == -1) {
+          	perror("semget:");
+          	exit(errno);
+      	}
+     }
+     else
+     	printf("\n>Semaforo creado\n");
+
+     system("ipcs -s");
+
+      // inicializar el semáforo mutex a 1
+      carg.val=1;
+      if((semctl(semid,SEM_MUTEX,SETVAL,carg))==-1){
+		printf("Error al incializar el semáforo\n");
+                /*Elimina los semaforos*/
+      		semctl (semid, 0, IPC_RMID);
+		exit(-1);
+      }
+	else
+       	printf(">Incialización del semáforo SEM_MUTEX a 1\n");
+
+	system("ipcs -s");
+
+      // crear una zona de memoria compartida de identificar shm para guardar un
+      // entero y obtener el puntero para acceder a ella
+
+      shm = shmget(CLAVE_MEMORIA, sizeof(int), IPC_CREAT|SHM_R|SHM_W | IPC_EXCL);
+
+	if (shm == -1) {
+
+		printf(">El segmento de memoria compartida ya ha sido creado\n");
+		/*Se quita IPC_CREAT si la memoria compartida ya esta creada, devuelve el id de la memoria*/
+		shm =shmget(CLAVE_MEMORIA, sizeof(int),SHM_R|SHM_W);
+
+		if(shm==-1){
+			printf("Error al obtener el id de la memoria compartida\n");
+			/*Elimina los semaforos*/
+      			semctl (semid, 0, IPC_RMID);
+			exit(-1);
+		}
+	}
+	else
+		printf("\n>El segmento de memoria compartida ha sido creado\n");
+
+	system("ipcs -m");
+
+	/*Vincula la memoria compartida*/
+	dir = (int *) shmat (shm, NULL, 0);
+	if(dir==(int *)-1){
+
+		printf("Error al obtener la dirección de memoria compartida\n");
+		/*elimina la memoria compartida (no se elimina hasta que no haya ningún proceso vinculado)*/
+		if(shmctl(shm,IPC_RMID,NULL)==-1){
+			printf("Error al eliminar la memoria compartida\n");
+			exit(-1);
+		}
+		/*Elimina los semaforos*/
+      		semctl (semid, 0, IPC_RMID);
+		exit(-1);
+	}
+	printf(">Proceso vinculado a memoria compartida\n");
+/*
+        if((down(semid, SEM_MUTEX))==-1){
+		printf("Error al hacer el down en el semaforo SEM_MUTEX\n");
+		
+		if(shmdt(dir)==-1){
+			printf("Error al desvincular la memoria compartida\n");
+			exit(-1);
+		}
+		
+		if(shmctl(shm,IPC_RMID,NULL)==-1){
+			printf("Error al eliminar la memoria compartida\n");
+			exit(-1);
+		}
+		
+      		semctl (semid, 0, IPC_RMID);
+		
+	}*/
+        (*dir) = 2;
+        printf("SOY TONTO DEL CULO %d\n",*dir);
+
+        if((up(semid, SEM_MUTEX))==-1){
+		printf("Error al hacer el up en el semaforo SEM_MUTEX\n");
+		/*Desvinculando la memoria*/
+		if(shmdt(dir)==-1){
+			printf("Error al desvincular la memoria compartida\n");
+			exit(-1);
+		}
+		/*elimina la memoria compartida (no se elimina hasta que no haya ningún proceso vinculado)*/
+		if(shmctl(shm,IPC_RMID,NULL)==-1){
+			printf("Error al eliminar la memoria compartida\n");
+			exit(-1);
+		}
+		/*Elimina los semaforos*/
+      		semctl (semid, 0, IPC_RMID);
+		
+	}
+
+      // liberar la memoria compartida y los semáforos
+
+      /*Desvincula la memoria*/
+      if(shmdt(dir)==-1){
+			printf("Error al desvincular la memoria compartida\n");
+			exit(-1);
+	}
+
+      /*elimina la memoria compartida*/
+      if(shmctl(shm,IPC_RMID,NULL)==-1){
+			printf("Error al eliminar la memoria compartida\n");
+			exit(-1);
+	}
+
+      printf("\n>Memoria compartida eliminada\n");
+      system("ipcs -m");
+      /*Elimina los semaforos*/
+      semctl (semid, 0, IPC_RMID);
+      printf("\n>Semaforos eliminiados\n");
+     
+     system("ipcs -s");
+
+exit(0);
+}

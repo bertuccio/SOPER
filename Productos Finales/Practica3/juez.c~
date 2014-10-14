@@ -1,0 +1,205 @@
+/*=== Cabeceras =============================================================*/
+#include "semaforos.h"
+#include "sudoku.h"
+#include <stdio.h>
+/*===========================================================================*/
+
+void (*signal (int sig, void (*func)(int))) (int);
+
+
+int jugadores;
+int tablero;
+int semid;
+int queue;
+int pidJugadores[MAX_JUGADORES];
+
+
+/******************************************************************************
+
+Nombre de la función: terminaJuez
+
+Descripción: Captura la señal SIGINT, libera los recursos y termina
+
+Devuelve: Void
+
+
+******************************************************************************/
+void terminaJuez(int sennal) {
+	
+	int i=0;
+
+	printf("\n>Terminando\n");
+	
+	/*Envia las señales a los procesos jugador para que terminen*/
+	while(PidJugadores[i]!=-1&&i<MAX_JUGADORES){
+		kill(pidJugadores[i],SIGURS1);
+		i++;
+	}
+
+	/*Envia la señal al proceso ordenador para que termine*/
+
+
+	/*Libera los recursos*/
+	if(shmdt(dirJugadores)!=-1)
+		printf(">Desvinculandose de la Zona Jugadores\n");
+	
+	if(shmdt(dirTablero)!=-1)
+		printf(">Desvinculandose de la Zona Tablero\n");
+	
+	if(shmctl(jugadores, IPC_RMID, 0)!=-1)
+		printf("\n>Zona Jugadores shmid: %d eliminada\n",jugadores);
+	
+	if(shmctl(tablero, IPC_RMID, 0)!=-1)
+		printf("\n>Zona Tablero shmid: %d eliminada\n",tablero);
+
+	if(borrarSemaforos(semid)!=-1)
+		printf("\n>Semaforos borrados\n");
+
+	if(msgctl(queue,IPC_RMID,NULL)!=-1)
+		printf("\n>Cola de mensajes borrada\n");
+
+	exit(0);
+}
+
+/******************************************************************************
+
+Nombre de la función: main
+
+Descripción: 
+
+Devuelve: 0 si todo ha funcionado correctamente
+	  -1 si no
+
+
+******************************************************************************/
+int main(){
+	
+	int i;	
+
+	PeticionJugador peticionjugador;
+
+	int contadorJugadores=0;
+
+	Jugador *dirJugadores=NULL;
+	Tablero *dirTablero=NULL;
+
+	int longitud=sizeof(PeticionJugador)-sizeof(peticion.tipo);
+
+	iniPidJugadores(&pidJugadores);
+
+	signal(SIGINT,terminaJuez);
+
+	
+
+	/*****************************************************************************
+	***********************CREACION MEMORIA COMPARTIDA****************************
+	*****************************************************************************/
+	jugadores = shmget(CLAVE_JUGADORES, NUM_JUGADORES*sizeof(Jugador), IPC_CREAT|SHM_R|SHM_W | IPC_EXCL);
+
+	if (jugadores == -1) {
+
+		printf(">La Zona Jugadores ya ha sido creada\n");
+		/*Se quita IPC_CREAT si la memoria compartida ya esta creada, devuelve el id de la memoria*/
+		jugadores =shmget(CLAVE_JUGADORES,NUM_JUGADORES*sizeof(Jugador),SHM_R|SHM_W);
+
+		if(jugadores==-1){
+			printf(">Error al obtener el id de la Zona Jugadores\n");
+			exit(-1);
+		}
+	}
+	else
+		printf(">La zona Jugadores shmid: %d ha sido creada\n",jugadores);
+
+
+	tablero = shmget(CLAVE_TABLERO, sizeof(Tablero), IPC_CREAT|SHM_R|SHM_W | IPC_EXCL);
+
+	if (tablero == -1) {
+
+		printf(">La Zona Tablero ya ha sido creada\n");
+		/*Se quita IPC_CREAT si la memoria compartida ya esta creada, devuelve el id de la memoria*/
+		tablero =shmget(CLAVE_TABLERO,sizeof(Tablero),SHM_R|SHM_W);
+
+		if(tablero==-1){
+			printf(">Error al obtener el id de la Zona Tablero\n");
+			exit(-1);
+		}
+	}
+	else
+		printf(">La zona Tablero shmid: %d ha sido creada\n",tablero);
+
+	/*****************************************************************************
+	********************VINCULACION DE LA MEMORIA COMPARTIDA *********************
+	*****************************************************************************/
+
+	/*Vincula la memoria compartida Zona Jugadores*/
+	dirJugadores = (Jugador *) shmat (jugadores, NULL, 0);
+
+	if(dirJugadores==(Jugador *)-1){
+		printf(">Error al vincularse a la Zona Jugadores %d \n",jugadores);
+		exit(-1);
+	}
+	printf(">Vinculado a la Zona Jugadores\n");
+
+	/*Vincula la memoria compartida Zona Tablero*/
+	dirTablero = (Tablero *) shmat (tablero, NULL, 0);
+
+	if(dirTablero==(Tablero *)-1){
+		printf(">Error al vincularse a la Zona Tablero %d \n",tablero);
+		exit(-1);
+	}
+	printf(">Vinculado a la Zona Tablero\n");
+
+	/*****************************************************************************
+	*****************INICIALIZACION DE LA MEMORIA COMPARTIDA *********************
+	*****************************************************************************/
+	for(i=0;i<MAX_JUGADORES;i++){
+
+		*(dirJugadores+i)=iniJugador();
+	}
+
+	/*****************************************************************************
+	************************CREACION DE LOS SEMAFOROS*****************************
+	*****************************************************************************/
+	semid=creaSemaforos(CLAVE_SEMAFORO,10);
+	if (semid == -1) {
+		perror(">semget:");
+		exit(errno);
+	}
+	else
+		printf("\n>Semaforos creados\n");
+
+
+
+	/*Inicializa el semaforo SEM_MAX_JUGADORES a NUM_JUGADORES*/
+	setValorSemaforo(semid,SEM_MAX_JUGADORES,MAX_JUGADORES);
+	/*Inicializa el semaforo SEM_TABLERO_MUTEX a 1*/
+	setValorSemaforo(SEM_TABLERO_MUTEX,1);
+
+
+	/*****************************************************************************
+	***********************CREACION DE LA COLA DE MENSAJES************************
+	*****************************************************************************/
+	queue = msgget(CLAVE_MENSAJES, IPC_CREAT|SHM_R|SHM_W);
+	if (queue == -1) {
+		printf(">La cola de mensajes ya ha sido creada\n");
+		queue = msgget(CLAVE_MENSAJES,SHM_R|SHM_W);
+		if(queue==-1){
+			perror("msgget:");
+			raise(SIGINT);/*?????????????*/
+		}
+	}
+			
+	/****************************************************************************/
+
+	/*Recibe peticiones de jugadores*/
+	if(msgrcv(queue,&peticionjugador,longitud,PETICION_JUGADOR,0)==-1){
+		perror("msgrcv:");
+		exit(-1);
+	}	
+
+	/*Introduce el pid del jugador en el array de pids*/
+	pidJugadores[contadorJugadores]=getPidJugador(getJugadorPeticionJugador(peticionjugador));
+	contadorJugadores++;
+	/*Introduce los jugadores en memoria*/
+return 1;
+}

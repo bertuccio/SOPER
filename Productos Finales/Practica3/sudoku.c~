@@ -1,0 +1,243 @@
+/******************************************************************************
+
+Nombre del módulo: sudoku.c
+
+Descripción: Este archivo contiene las funciones de sudoku.h
+
+******************************************************************************/
+
+/*=== Cabeceras =============================================================*/
+#include"sudoku.h"
+
+/*=== Funciones==============================================================*/
+
+/******************************************************************************
+
+Nombre de la función: setNombreJugador
+
+Descripción: Introduce el nombre a una estructura Jugador
+
+Devuelve: Void
+
+
+******************************************************************************/
+void setNombreJugador(Jugador *jugador,char *nombre){
+	strcpy(jugador->nombre,nombre);
+}	
+
+/******************************************************************************
+
+Nombre de la función: setPidJugador
+
+Descripción: Introduce el pid de Jugador
+
+Devuelve: Void
+
+
+******************************************************************************/
+void setIdJugador(Jugador *jugador, int id){
+	jugador->id=id;
+}
+/******************************************************************************
+
+Nombre de la función: getNombreJugador
+
+Descripción: Devuelve el nombre de un jugador
+
+Devuelve: El nombre del jugador
+
+
+******************************************************************************/
+char * getNombreJugador(Jugador *jugador){
+	return jugador->nombre;
+}
+/******************************************************************************
+
+Nombre de la función: getPidJugador
+
+Descripción: Devuelve el pid de un jugador
+
+Devuelve: el pid de un jugador
+
+
+******************************************************************************/
+int getIdJugador(Jugador jugador){
+	return jugador.id;	
+}
+
+/******************************************************************************
+
+Nombre de la función: iniJugador
+
+Descripción: Devuelve un jugador inicializado con pid=-1
+
+Devuelve: Jugador inicializado a -1
+
+
+******************************************************************************/
+Jugador iniJugador(){
+	Jugador jugador;
+	
+	jugador.id=-1;
+	strcpy(jugador.nombre,"\0");
+	jugador.jugadasCorrectas=0;
+
+	return jugador;
+
+}
+/******************************************************************************
+
+Nombre de la función: getJugadorPeticionJugador
+
+Descripción: Devuelve el jugador de una peticion
+
+Devuelve: Jugador
+
+
+******************************************************************************/
+Jugador getJugadorPeticionJugador(PeticionJugador peticion){
+	return peticion.jugador;
+}
+
+/******************************************************************************
+
+Nombre de la función: setJugadorPeticionJugador
+
+Descripción: Introduce el jugador en la peticion de jugador
+
+Devuelve: vacio
+
+
+******************************************************************************/
+void setJugadorPeticionJugador(Jugador jugador, PeticionJugador *peticion){
+	peticion->jugador=jugador;
+	peticion->tipo=PETICION_JUGADOR;
+}
+
+/******************************************************************************
+
+Nombre de la función: iniPidJugadores
+
+Descripción: Inicializa el array de pids a -1
+
+Devuelve: vacio
+
+
+******************************************************************************/
+void iniIdJugadores(int idJugadores[MAX_JUGADORES]){
+	int i;
+
+	for(i=0;i<MAX_JUGADORES;i++)
+		idJugadores[i]=-1;
+}
+/******************************************************************************
+
+Nombre de la función: ImprimeTablero
+
+Descripción: Imprime por pantalla el tablero del sudoku
+
+Devuelve: vacio
+
+
+******************************************************************************/
+void ImprimeTablero(Sudoku sudoku){
+
+	int i, j;
+	system("clear");
+	/*Dibuja la referencia numerica de las columnas*/
+	printf("   ");
+	for(i=0;i<MAX_COL;i++)
+		printf("%d  ",i);
+	printf("\n");
+	/*Imprime el tablero junto con la referencia de las filas*/
+	for(i=0;i<MAX_FIL;i++){
+		printf("%d ",i);
+		for(j=0;j<MAX_COL;j++){
+			printf("[%d]",sudoku.tablero[i][j]);
+			if(j==MAX_COL-1)
+				printf("\n");
+		}
+
+	}
+}
+/******************************************************************************
+
+Nombre de la función: setJugada
+
+Descripción: Introduce los atributos de una jugada
+
+Devuelve: vacio
+
+
+******************************************************************************/
+void setJugada(Jugada *jugada, int cordx, int cordy, int valor){
+	jugada->cordx=cordx;
+	jugada->cordy=cordy;
+	jugada->valor=valor;
+}
+/******************************************************************************
+
+Nombre de la función: getCordxJugada
+
+Descripción: Obtiene la cordx de una Jugada
+
+Devuelve: vacio
+
+
+******************************************************************************/
+int getCordxJugada(Jugada jugada){
+	return jugada.cordx;
+}
+/******************************************************************************
+
+Nombre de la función: getCordyJugada
+
+Descripción:   Obtiene la cordy de una Jugada
+
+Devuelve: vacio
+
+
+******************************************************************************/
+int getCordyJugada(Jugada jugada){
+	return jugada.cordy;
+}
+/******************************************************************************
+
+Nombre de la función: getValorJugada
+
+Descripción: Obtiene el valor de una Jugada
+
+Devuelve: vacio
+
+
+******************************************************************************/
+int getValorJugada(Jugada jugada){
+	return jugada.valor;
+}
+/******************************************************************************
+
+Nombre de la función: setJugadaPeticionJugada
+
+Descripción: Introduce una Jugada en una Peticion
+
+Devuelve: vacio
+
+
+******************************************************************************/
+void setJugadaPeticionJugada(PeticionJugada *peticion, Jugada jugada){
+	peticion->tipo=PETICION_JUGADA;
+	peticion->jugada.cordx=jugada.cordx;
+	peticion->jugada.cordy=jugada.cordy;
+	peticion->jugada.valor=jugada.valor;
+}
+/******************************************************************************
+
+Nombre de la función: setJugada
+
+Descripción: Introduce los atributos de una jugada
+
+Devuelve: vacio
+
+
+******************************************************************************/
+Jugada getJugadaPeticionJugada(PeticionJugada *peticion);

@@ -1,0 +1,11 @@
+
+int up(int id, int num_sem){
+	int resultado;
+
+	struct sembuf operup = {0, 1, 0};
+
+	operup.sem_num=num_sem;
+
+	semop(id, &operup, 1);
+
+}

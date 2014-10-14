@@ -1,0 +1,26 @@
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/types.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+#define CLAVE_MEMORIA 2556
+#define SHM_MODE (SHM_R | SHM_W) 
+
+int main() {
+
+	int shm, status;
+	shm = shmget(IPC_PRIVATE, sizeof(int), SHM_MODE); /*EEXIST*/
+	printf("%d\n",shm);
+	if (shm == -1) {
+		perror("shmget:");
+		exit(-1);
+	}
+	status = shmctl(shm,IPC_RMID, NULL);
+	if(status == -1){
+		perror("shmctl:");
+		exit(-1);
+	}
+	exit(0);
+}

@@ -1,0 +1,101 @@
+#ifndef _SUDOKU
+#define _SUDOKU
+/******************************************************************************
+
+Nombre del fichero: sudoku.h
+
+******************************************************************************/
+/*=== Cabeceras==============================================================*/
+#include<stdio.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <errno.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <wait.h>
+#include <sys/types.h>
+#include <sys/time.h>
+/*=== Definiciones===========================================================*/
+
+#define MAX_LINE 256
+#define MAX_JUGADORES 5
+
+#define FIN_TURNO 2
+
+#define SEM_MAX_JUGADORES 0
+#define SEM_SUDOKU_MUTEX 1
+#define SEM_JUGADOR_MUTEX 2
+
+#define PETICION_JUGADOR 1
+#define PETICION_JUGADA 2
+
+#define CLAVE_JUGADORES 1555
+#define CLAVE_MENSAJES 1556
+#define CLAVE_SUDOKU 1557
+
+#define MAX_FIL 9
+#define MAX_COL 9
+
+#define TURNO_TIEMPO 15
+
+typedef struct {
+    int espacios;                
+    char tablero[MAX_FIL][MAX_COL];  
+}Sudoku;
+
+
+typedef struct{
+	int jugadasCorrectas;
+	char nombre[MAX_LINE];
+	int id;
+}Jugador;
+
+typedef struct{
+	long tipo;
+	Jugador jugador;
+}PeticionJugador;
+
+typedef struct{
+	int cordx;
+	int cordy;
+	int valor;
+}Jugada;
+
+typedef struct{
+	long tipo;
+	Jugada jugada;
+}PeticionJugada;
+
+typedef enum{
+	TRUE=1,
+	FALSE=0
+}boolean;
+
+
+/*=== Funciones==============================================================*/
+Jugador iniJugador();
+void iniIdJugadores(int *idJugadores);
+void setNombreJugador(Jugador *jugador, char *nombre);
+char * getNombreJugador(Jugador *jugador);
+void setIdJugador(Jugador *jugador, int id);
+int getIdJugador(Jugador jugador);
+
+Jugador getJugadorPeticionJugador(PeticionJugador peticion);
+void setJugadorPeticionJugador(Jugador jugador, PeticionJugador *peticion);
+
+void ImprimeTablero(Sudoku sudoku);
+
+void setJugada(Jugada *jugada, int cordx, int cordy, int valor);
+int getCordxJugada(Jugada jugada);
+int getCordyJugada(Jugada jugada);
+int getValorJugada(Jugada jugada);
+
+void setJugadaPeticionJugada(PeticionJugada *peticion, Jugada jugada);
+Jugada getJugadaPeticionJugada(PeticionJugada *peticion);
+
+
+
+/*===========================================================================*/
+#endif
